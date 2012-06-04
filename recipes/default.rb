@@ -103,5 +103,15 @@ artifacts.each do |artifact|
     action :create
   end
 
+  link File.join(artifact_dir, 'current') do
+    link_type :symbolic
+    to version_dir
+  end
 end
 
+# Add nginx config
+template "/etc/nginx/conf.d/gearbox.conf" do
+  source "gearbox.conf.erb"
+  notifies :restart, resources(:service => :nginx)
+end
+  

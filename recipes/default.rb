@@ -23,10 +23,12 @@
 gem_package "aws-s3" do
   action :install
   version "0.6.3"
+  options "--no-ri --no-rdoc"
 end.run_action(:install)
 gem_package "mustache" do
   action :install
   version "0.99.4"
+  options "--no-ri --no-rdoc"
 end.run_action(:install)
 Gem.clear_paths
 
@@ -76,9 +78,9 @@ artifacts.each do |artifact|
     user "root"
     not_if { File.directory?(version_dir) }
     code <<-EOH
-    mkdir -p #{version_dir}
-    cd #{version_dir}
-    tar -xzf #{tar_file} 
+    mkdir -p "#{version_dir}"
+    cd "#{version_dir}"
+    tar -xzf "#{tar_file}" 
     EOH
   end
 
@@ -90,14 +92,21 @@ artifacts.each do |artifact|
       template_dir = Pathname.new(File::join(version_dir, 'gbtemplate'))
       Mustache::template_path=template_dir
       compiled_dir = Pathname.new(File::join(version_dir, 'gbconfig'))
+
+      # find the templates
       Dir::glob("#{template_dir}/**/*.mustache").each do |file|
+        # skip partials (templates that begin with _)
+        next if (File.basename(file) =~ /^_/)
+
+        # render the template
         Chef::Log.info("Expanding mustache template #{file}")
         template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
         target_file = File.join(compiled_dir, template)
         FileUtils.mkdir_p(File.dirname(target_file))
         File.open(target_file, "w") do |fh|
-          fh.write(Mustache.render_file(template, node))
+          fh.write(Mustache.render_file(template, node.to_hash))
         end
+
       end
     end
     action :create

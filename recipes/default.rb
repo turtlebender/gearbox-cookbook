@@ -59,6 +59,7 @@ artifacts.each do |artifact|
   artifact_dir = File::join(node[:gearbox][:app_dir], artifact[:bag]["project_name"])
   tar_file = "#{artifact_dir}/tars/#{artifact_name}" 
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
+  Chef::Log.info("Version dir: #{version_dir}")
 
   # Download the artifact
   directory File::dirname(tar_file) do 
@@ -125,6 +126,22 @@ artifacts.each do |artifact|
     link_type :symbolic
     to version_dir
   end
+
+  directory File.join(artifact_dir, 'log') do 
+    action :create
+    recursive true
+    owner 'www-data'
+    group 'www-data'
+  end
+
+  directory File.join(artifact_dir, 'cache') do
+    action :create
+    recursive true
+    owner 'www-data'
+    group 'www-data'
+  end
+
+
 end
 
 # Add nginx config

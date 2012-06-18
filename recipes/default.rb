@@ -43,8 +43,7 @@ aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", "boto")
 AWS::S3::Base.establish_connection!(
   :access_key_id     => aws_creds["aws_access_key_id"],
   :secret_access_key => aws_creds["aws_secret_access_key"]
-)
-
+) 
 artifacts = apps.collect do |bag|
   prefix = "#{bag['project_name']}/#{node[:chef_environment]}"
   bucket = AWS::S3::Bucket.objects(node[:gearbox][:artifact_bucket], :prefix => prefix).sort_by(&:key).last
@@ -107,6 +106,16 @@ artifacts.each do |artifact|
           fh.write(Mustache.render_file(template, node.to_hash))
         end
 
+      end
+
+      # link uwsgi files
+      if node[:uwsgi][:app_path] 
+        Dir::glob("#{compiled_dir}/uwsgi/**/*.yml").each do |source_file|
+          target_file = source_file.sub("#{compiled_dir}/uwsgi/", node[:uwsgi][:app_path] )
+          File.delete(target_file) if File.exists?(target_file)
+          FileUtils.mkdir_p(File.dirname(node[:uwsgi][:app_path])) unless File.exists?(node[:uwsgi][:app_path]) 
+          File.symlink(source_file, target_file)
+        end
       end
     end
     action :create

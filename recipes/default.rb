@@ -67,11 +67,17 @@ artifacts.each do |artifact|
   artifact_dir = File::join(node[:gearbox][:app_dir], artifact[:bag]["project_name"])
   tar_file = "#{artifact_dir}/tars/#{artifact_name}" 
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
-  Chef::Log.info("Version dir: #{version_dir}")
+
+  directory artifact_dir do
+    owner artifact[:bag]["project_name"]
+    group node[:gearbox][:user]
+    mode '0775'
+    recursive true
+  end
 
   # create an application user and add it to the uwsgi and www-data
   # groups
-  user artifact do
+  user artifact[:bag]['project_name'] do
     system true
   end
 
@@ -79,12 +85,14 @@ artifacts.each do |artifact|
     group grp do
       action :modify
       append true
-      members artifact_name
+      members artifact[:bag]["project_name"]
     end
   end
 
   # Download the artifact
   directory File::dirname(tar_file) do 
+    owner artifact[:bag]["project_name"]
+    group node[:gearbox][:user]
     action :create
     recursive true
   end
@@ -92,20 +100,23 @@ artifacts.each do |artifact|
   file tar_file do
     action :create_if_missing
     content artifact[:bucket].value
+    owner artifact[:bag]["project_name"]
+    group node[:gearbox][:user]
   end
 
   # Untar it
-  script "untar-#{artifact_name}" do
+  script "untar-#{artifact[:bag]['project_name']}" do
     interpreter "bash"
-    user "root"
+    user artifact[:bag]["project_name"]
     not_if { File.directory?(version_dir) }
     code <<-EOH
     mkdir -p "#{version_dir}"
     cd "#{version_dir}"
-    tar -xzf "#{tar_file}" 
+    tar -xzf "#{tar_file}"
     EOH
   end
 
+  uwsgi_app = false
   # Instantiate the mustachios
   ruby_block "instantiate mustache" do
     block do
@@ -142,36 +153,38 @@ artifacts.each do |artifact|
           File.symlink(source_file, target_file)
           uwsgi_app = true
         end
-        if uwsgi_app
-          group node[:uwsgi][:group] do
-            action :modify
-            append true
-            members artifact_name
-          end
-        end
       end
     end
     action :create
+  end
+  if uwsgi_app
+    group node[:uwsgi][:user] do
+      action :modify
+      append true
+      members artifact[:bag]['project_name']
+    end
   end
 
   link File.join(artifact_dir, 'current') do
     link_type :symbolic
     to version_dir
+    owner artifact[:bag]["project_name"]
+    group node[:gearbox][:user]
   end
 
   directory File.join(artifact_dir, 'log') do 
     action :create
     recursive true
-    owner artifact_name
-    mode '0755'
+    owner artifact[:bag]['project_name']
+    mode '0775'
     group node[:nginx][:user]
   end
 
   directory File.join(artifact_dir, 'cache') do
     action :create
     recursive true
-    owner artifact_name
-    mode '0755'
+    owner artifact[:bag]['project_name']
+    mode '0775'
     group node[:nginx][:user]
   end
 end
@@ -179,6 +192,7 @@ end
 # Add nginx config
 template "/etc/nginx/conf.d/gearbox.conf" do
   source "gearbox.conf.erb"
+  owner node[:gearbox][:user]
+  group node[:gearbox][:user]
   notifies :restart, resources(:service => :nginx)
 end
-  

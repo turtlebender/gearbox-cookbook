@@ -73,7 +73,7 @@ artifacts.each do |artifact|
   end
 
   # Untar it
-  script "untar" do 
+  script "untar-#{artifact_name}" do
     interpreter "bash"
     user "root"
     not_if { File.directory?(version_dir) }

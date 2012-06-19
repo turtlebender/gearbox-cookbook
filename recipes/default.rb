@@ -69,6 +69,20 @@ artifacts.each do |artifact|
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
   Chef::Log.info("Version dir: #{version_dir}")
 
+  # create an application user and add it to the uwsgi and www-data
+  # groups
+  user artifact do
+    system true
+  end
+
+  [ node[:nginx][:user], node[:gearbox][:user] ].each do |grp|
+    group grp do
+      action :modify
+      append true
+      members artifact_name
+    end
+  end
+
   # Download the artifact
   directory File::dirname(tar_file) do 
     action :create
@@ -139,18 +153,18 @@ artifacts.each do |artifact|
   directory File.join(artifact_dir, 'log') do 
     action :create
     recursive true
-    owner 'www-data'
-    group 'www-data'
+    owner artifact_name
+    mode '0755'
+    group node[:nginx][:user]
   end
 
   directory File.join(artifact_dir, 'cache') do
     action :create
     recursive true
-    owner 'www-data'
-    group 'www-data'
+    owner artifact_name
+    mode '0755'
+    group node[:nginx][:user]
   end
-
-
 end
 
 # Add nginx config

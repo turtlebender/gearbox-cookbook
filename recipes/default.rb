@@ -18,18 +18,7 @@
 
 # Get the databags associated with the specific apps
 
-# We need aws-s3 now!
-gem_package "aws-s3" do
-  action :install
-  version "0.6.3"
-  options "--no-ri --no-rdoc"
-end.run_action(:install)
-gem_package "mustache" do
-  action :install
-  version "0.99.4"
-  options "--no-ri --no-rdoc"
-end.run_action(:install)
-Gem.clear_paths
+include_recipe "gearbox::deps"
 
 require "aws/s3"
 

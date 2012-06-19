@@ -56,7 +56,7 @@ end
 
 directory node[:gearbox][:log_dir] do
   owner node[:gearbox][:user]
-  group node[:gearbox][:user]
+  group node[:nginx][:user]
   mode '0775'
 end
 

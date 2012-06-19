@@ -133,12 +133,21 @@ artifacts.each do |artifact|
 
       # link uwsgi files
       if node[:uwsgi][:app_path] 
+        uwsgi_app = false
         Dir::glob("#{compiled_dir}/uwsgi/**/*.yml").each do |source_file|
           target_file = source_file.sub("#{compiled_dir}/uwsgi", node[:uwsgi][:app_path] )
           File.delete(target_file) if File.exists?(target_file)
           FileUtils.mkdir_p(File.dirname(node[:uwsgi][:app_path])) unless File.exists?(node[:uwsgi][:app_path]) 
           Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
           File.symlink(source_file, target_file)
+          uwsgi_app = true
+        end
+        if uwsgi_app
+          group node[:uwsgi][:group] do
+            action :modify
+            append true
+            members artifact_name
+          end
         end
       end
     end

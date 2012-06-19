@@ -50,6 +50,15 @@ artifacts = apps.collect do |bag|
   { :bag => bag, :bucket => bucket }
 end.reject(&:nil?)
 
+user node[:gearbox][:user] do
+  system true
+end
+
+directory node[:gearbox][:log_dir] do
+  owner node[:gearbox][:user]
+  group node[:gearbox][:user]
+  mode '0775'
+end
 
 # Install each artifact
 

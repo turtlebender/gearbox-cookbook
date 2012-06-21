@@ -57,17 +57,17 @@ artifacts.each do |artifact|
   tar_file = "#{artifact_dir}/tars/#{artifact_name}" 
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
 
+  # create an application user and add it to the uwsgi and www-data
+  # groups
+  user artifact[:bag]['project_name'] do
+    system true
+  end
+
   directory artifact_dir do
     owner artifact[:bag]["project_name"]
     group node[:gearbox][:user]
     mode '0775'
     recursive true
-  end
-
-  # create an application user and add it to the uwsgi and www-data
-  # groups
-  user artifact[:bag]['project_name'] do
-    system true
   end
 
   [ node[:nginx][:user], node[:gearbox][:user] ].each do |grp|

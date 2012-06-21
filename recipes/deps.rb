@@ -30,6 +30,6 @@ remote_file "/var/lib/globus/downloads/globus-repository-maverick_0.0.1_all.deb"
   notifies :run, "bash[update_apt]", :immediately
 end
 
-%w{libglobus-gss-assist-dev libglobus-gsi-credential-dev libglobus-gsi-sysconfig-dev libglobus-gsi-cert-utils-dev libglobus-gsi-cert-utils0 libglobus-usage-dev myproxy}.each do |pkg|
+%w{libglobus-gss-assist-dev libglobus-gsi-credential-dev libglobus-gsi-sysconfig-dev libglobus-gsi-cert-utils-dev libglobus-gsi-cert-utils0 libglobus-usage-dev myproxy libxslt1-dev libxml2-dev}.each do |pkg|
   package pkg
 end

@@ -56,6 +56,7 @@ artifacts.each do |artifact|
   artifact_dir = File::join(node[:gearbox][:app_dir], artifact[:bag]["project_name"])
   tar_file = "#{artifact_dir}/tars/#{artifact_name}" 
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
+  current_app_dir = File.join(artifact_dir, 'current')
 
   # create an application user and add it to the uwsgi and www-data
   # groups
@@ -146,6 +147,7 @@ artifacts.each do |artifact|
     end
     action :create
   end
+
   if uwsgi_app
     group node[:uwsgi][:user] do
       action :modify
@@ -154,13 +156,15 @@ artifacts.each do |artifact|
     end
   end
 
-  link File.join(artifact_dir, 'current') do
+  # Create a link to the current deployment dir
+  link current_app_dir do
     link_type :symbolic
     to version_dir
     owner artifact[:bag]["project_name"]
     group node[:gearbox][:user]
   end
 
+  # Create a logging directory
   directory File.join(artifact_dir, 'log') do 
     action :create
     recursive true
@@ -169,12 +173,34 @@ artifacts.each do |artifact|
     group node[:nginx][:user]
   end
 
+  # Create the cache directory
   directory File.join(artifact_dir, 'cache') do
     action :create
     recursive true
     owner artifact[:bag]['project_name']
     mode '0775'
     group node[:nginx][:user]
+  end
+
+  # Create the cron jobs
+  if artifact[:bag]['crontabs']
+    artifact[:bag]['crontabs'].each_with_index do |task, index|
+      cron "cron-#{artifact[:bag]['project_name']}-#{index}" do
+
+        minute task['minute']   if task['minute']
+        hour task['hour']       if task['hour']
+        day task['day']         if task['day']
+        month task['month']     if task['month']
+        weekday task['weekday'] if task['weekday']
+        path task['path']       if task['path']
+        home task['home']       if task['home']
+        shell task['shell']     if task['shell']
+        user task['user']       if task['user']
+
+        command "GB_APP_DIR=#{current_app_dir}; #{task['command']}"
+
+      end
+    end
   end
 end
 

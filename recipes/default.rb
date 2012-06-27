@@ -33,7 +33,7 @@ AWS::S3::Base.establish_connection!(
   :secret_access_key => aws_creds["aws_secret_access_key"]
 ) 
 artifacts = apps.collect do |bag|
-  prefix = "#{bag['project_name']}/#{node[:chef_environment]}"
+  prefix = "#{bag['project_name']}/#{node.chef_environment}"
   bucket = AWS::S3::Bucket.objects(node[:gearbox][:artifact_bucket], :prefix => prefix).sort_by(&:key).last
   raise RuntimeError.new("Failed to find artifact for #{bag["project_name"]}.") if bucket.nil?
   { :bag => bag, :bucket => bucket }

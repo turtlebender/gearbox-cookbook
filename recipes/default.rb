@@ -49,6 +49,20 @@ directory node[:gearbox][:log_dir] do
   mode '0775'
 end
 
+# load the databags
+# TODO: there may be a cleaner way to do this using lambdas
+databags ||= { } 
+node[:gearbox][:encrypted_data_bags].each do |k,v|
+  databags[k] = v.map do |args|
+    Chef::EncryptedDataBagItem.load(*args).to_hash
+  end
+end
+node[:gearbox][:data_bags].each do |k,v|
+  databags[k] = v.map do |args|
+    data_bag_item(*args).to_hash
+  end
+end
+
 # Install each artifact
 
 artifacts.each do |artifact|
@@ -116,6 +130,10 @@ artifacts.each do |artifact|
       Mustache::template_path=template_dir
       compiled_dir = Pathname.new(File::join(version_dir, 'gbconfig'))
 
+      #contest is node + loaded databags
+      context = node.to_hash
+      context["gearbox"]["loaded_data_bags"] = databags
+
       # find the templates
       Dir::glob("#{template_dir}/**/*.mustache").each do |file|
         # skip partials (templates that begin with _)
@@ -127,10 +145,12 @@ artifacts.each do |artifact|
         target_file = File.join(compiled_dir, template)
         FileUtils.mkdir_p(File.dirname(target_file))
         File.open(target_file, "w") do |fh|
-          fh.write(Mustache.render_file(template, node.to_hash))
+          fh.write(Mustache.render_file(template, context))
         end
 
       end
+
+
 
       # link uwsgi files
       if node[:uwsgi][:app_path] 

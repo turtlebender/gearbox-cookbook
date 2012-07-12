@@ -193,6 +193,15 @@ artifacts.each do |artifact|
     group node[:nginx][:user]
   end
 
+  # Create a var directory
+  directory File.join(artifact_dir, 'var') do 
+    action :create
+    recursive true
+    owner artifact[:bag]['project_name']
+    mode '0775'
+    group node[:nginx][:user]
+  end
+
   # Create the cache directory
   directory File.join(artifact_dir, 'cache') do
     action :create

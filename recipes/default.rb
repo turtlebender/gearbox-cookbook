@@ -183,6 +183,7 @@ artifacts.each do |artifact|
   link current_app_dir do
     link_type :symbolic
     to version_dir
+    Chef::Log.info(artifact[:bag]["project_name"])
     owner artifact[:bag]["project_name"]
     group node[:gearbox][:user]
   end

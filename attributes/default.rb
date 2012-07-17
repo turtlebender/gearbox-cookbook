@@ -3,3 +3,6 @@ default[:gearbox][:log_dir] = '/var/log/gearbox'
 default[:gearbox][:user] = 'gearbox'
 default[:gearbox][:artifact_bucket] = 'gearbox_build_artifacts'
 default[:gearbox][:app_dir] = '/usr/share/gearbox'
+default[:gearbox][:encrypted_data_bags] = []
+default[:gearbox][:data_bags] = []
+default[:gearbox][:versions] = {}

@@ -46,10 +46,12 @@ user node[:gearbox][:user] do
   system true
 end
 
-directory node[:gearbox][:log_dir] do
-  owner node[:gearbox][:user]
-  group node[:nginx][:user]
-  mode '0775'
+[node[:gearbox][:log_dir], node[:gearbox][:log_dir]].each do |dir|
+  directory dir do
+    owner node[:gearbox][:user]
+    group node[:nginx][:user]
+    mode '0775'
+  end
 end
 
 # load the databags
@@ -169,6 +171,7 @@ artifacts.each do |artifact|
       end
     end
     action :create
+    notifies :restart, resources(:service => :nginx)
   end
 
   if uwsgi_app
@@ -183,7 +186,6 @@ artifacts.each do |artifact|
   link current_app_dir do
     link_type :symbolic
     to version_dir
-    Chef::Log.info(artifact[:bag]["project_name"])
     owner artifact[:bag]["project_name"]
     group node[:gearbox][:user]
   end

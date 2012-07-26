@@ -46,12 +46,10 @@ user node[:gearbox][:user] do
   system true
 end
 
-[node[:gearbox][:log_dir], node[:gearbox][:log_dir]].each do |dir|
-  directory dir do
-    owner node[:gearbox][:user]
-    group node[:nginx][:user]
-    mode '0775'
-  end
+directory node[:gearbox][:log_dir] do
+  owner node[:gearbox][:user]
+  group node[:nginx][:user]
+  mode '0775'
 end
 
 # load the databags

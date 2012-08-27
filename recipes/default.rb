@@ -87,12 +87,11 @@ artifacts.each do |artifact|
     recursive true
   end
 
-  if node["nginx"]
-    group node["nginx"]["user"] do
-      action :modify
-      append :true
-      members artifact["bag"]["project_name"]
-    end
+  group node["nginx"]["user"] do
+    action :modify
+    append :true
+    members artifact["bag"]["project_name"]
+    only_if node["nginx"]
   end
 
   group node["gearbox"]["user"] do
@@ -179,12 +178,11 @@ artifacts.each do |artifact|
     end
   end
 
-  if uwsgi_app
-    group node["uwsgi"]["user"] do
-      action :modify
-      append true
-      members artifact["bag"]['project_name']
-    end
+  group node["uwsgi"]["user"] do
+    action :modify
+    append true
+    members artifact["bag"]['project_name']
+    only_if uwsgi_app
   end
 
   # Create a link to the current deployment dir
@@ -196,30 +194,13 @@ artifacts.each do |artifact|
   end
 
   # Create a logging directory
-  directory File.join(artifact_dir, 'log') do 
-    action :create
-    recursive true
-    owner artifact["bag"]['project_name']
-    mode '0775'
-    group node["nginx"]["user"] rescue node["gearbox"]["user"]
-  end
-
-  # Create a var directory
-  directory File.join(artifact_dir, 'var') do 
-    action :create
-    recursive true
-    owner artifact["bag"]['project_name']
-    mode '0775'
-    group node["nginx"]["user"] rescue node["gearbox"]["user"]
-  end
-
-  # Create the cache directory
-  directory File.join(artifact_dir, 'cache') do
-    action :create
-    recursive true
-    owner artifact[:bag]['project_name']
-    mode '0775'
-    group node["nginx"]["user"] rescue node["gearbox"]["user"]
+  %w{log var cache}.each do |dirname|
+    directory File.join(artifact_dir, dirname) do 
+      action :create
+      owner artifact["bag"]['project_name']
+      mode '0775'
+      group node["nginx"]["user"] rescue node["gearbox"]["user"]
+    end
   end
 
   # Create the cron jobs
@@ -249,6 +230,7 @@ template "/etc/nginx/conf.d/gearbox.conf" do
   source "gearbox.conf.erb"
   owner node["gearbox"]["user"]
   group node["gearbox"]["user"]
+  variables(:app_dir => node["gearbox"]["app_dir"]
   if resources(:service => :nginx)
     notifies :restart, resources(:service => :nginx)
   end

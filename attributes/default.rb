@@ -21,3 +21,4 @@ default[:gearbox][:app_dir] = '/usr/share/gearbox'
 default[:gearbox][:encrypted_data_bags] = []
 default[:gearbox][:data_bags] = []
 default[:gearbox][:versions] = {}
+default[:gearbox][:aws_user] = "boto"

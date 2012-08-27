@@ -27,12 +27,11 @@ apps = node[:gearbox][:apps].map do |appname|
 end
 
 # Compile a list of artifacts
-aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", "boto")
+aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node[:gearbox][:aws_user])
 AWS::S3::Base.establish_connection!(
   :access_key_id     => aws_creds["aws_access_key_id"],
   :secret_access_key => aws_creds["aws_secret_access_key"]
 ) 
-
 
 artifacts = apps.collect do |bag|
   version = node[:gearbox][:versions][bag['project_name']] || node.chef_environment

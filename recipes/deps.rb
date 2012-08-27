@@ -31,7 +31,7 @@ directory "/var/lib/globus/downloads" do
   recursive true
 end
 
-if node[:enable_globus]
+if node["enable_globus"]
   bash "update_apt" do
     code <<-eof
   dpkg -i /var/lib/globus/downloads/globus-repository-maverick_0.0.1_all.deb

@@ -22,44 +22,44 @@ include_recipe "gearbox::deps"
 
 require "aws/s3"
 
-apps = node[:gearbox][:apps].map do |appname|
+apps = node["gearbox"]["apps"].map do |appname|
   data_bag_item("gearbox", appname) 
 end
 
 # Compile a list of artifacts
-aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node[:gearbox][:aws_user])
+aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
 AWS::S3::Base.establish_connection!(
   :access_key_id     => aws_creds["aws_access_key_id"],
   :secret_access_key => aws_creds["aws_secret_access_key"]
 ) 
 
 artifacts = apps.collect do |bag|
-  version = node[:gearbox][:versions][bag['project_name']] || node.chef_environment
+  version = node["gearbox"]["versions"][bag['project_name']] || node.chef_environment
   prefix = "#{bag['project_name']}/#{version}"
-  bucket = AWS::S3::Bucket.objects(node[:gearbox][:artifact_bucket], :prefix => prefix).sort_by(&:key).last
+  bucket = AWS::S3::Bucket.objects(node["gearbox"]["artifact_bucket"], :prefix => prefix).sort_by(&:key).last
   raise RuntimeError.new("Failed to find artifact for #{bag["project_name"]}.") if bucket.nil?
   { :bag => bag, :bucket => bucket }
 end.reject(&:nil?)
 
-user node[:gearbox][:user] do
+user node["gearbox"]["user"] do
   system true
 end
 
-directory node[:gearbox][:log_dir] do
-  owner node[:gearbox][:user]
-  group node[:nginx][:user]
+directory node["gearbox"]["log_dir"] do
+  owner node["gearbox"]["user"]
+  group node["nginx"]["user"]
   mode '0775'
 end
 
 # load the databags
 # TODO: there may be a cleaner way to do this using lambdas
 databags ||= { } 
-node[:gearbox][:encrypted_data_bags].each do |k,v|
+node["gearbox"]["encrypted_data_bags"].each do |k,v|
   databags[k] = v.map do |args|
     Chef::EncryptedDataBagItem.load(*args).to_hash
   end
 end
-node[:gearbox][:data_bags].each do |k,v|
+node["gearbox"]["data_bags"].each do |k,v|
   databags[k] = v.map do |args|
     data_bag_item(*args).to_hash
   end
@@ -69,51 +69,57 @@ end
 
 artifacts.each do |artifact|
   artifact_name = File::basename(artifact[:bucket].key)
-  artifact_dir = File::join(node[:gearbox][:app_dir], artifact[:bag]["project_name"])
+  artifact_dir = File::join(node["gearbox"]["app_dir"], artifact[:bag]["project_name"])
   tar_file = "#{artifact_dir}/tars/#{artifact_name}" 
   version_dir = "#{artifact_dir}/versions/#{artifact_name.sub(/\.tar\.gz/,'')}" 
   current_app_dir = File.join(artifact_dir, 'current')
 
   # create an application user and add it to the uwsgi and www-data
   # groups
-  user artifact[:bag]['project_name'] do
+  user artifact["bag"]['project_name'] do
     system true
   end
 
   directory artifact_dir do
-    owner artifact[:bag]["project_name"]
-    group node[:gearbox][:user]
+    owner artifact["bag"]["project_name"]
+    group node["gearbox"]["user"]
     mode '0775'
     recursive true
   end
 
-  [ node[:nginx][:user], node[:gearbox][:user] ].each do |grp|
-    group grp do
+  if node["nginx"]
+    group node["nginx"]["user"] do
       action :modify
-      append true
-      members artifact[:bag]["project_name"]
+      append :true
+      members artifact["bag"]["project_name"]
     end
+  end
+
+  group node["gearbox"]["user"] do
+    action :modify
+    append true
+    members artifact["bag"]["project_name"]
   end
 
   # Download the artifact
   directory File::dirname(tar_file) do 
-    owner artifact[:bag]["project_name"]
-    group node[:gearbox][:user]
+    owner artifact["bag"]["project_name"]
+    group node["gearbox"]["user"]
     action :create
     recursive true
   end
 
   file tar_file do
     action :create_if_missing
-    content artifact[:bucket].value
-    owner artifact[:bag]["project_name"]
-    group node[:gearbox][:user]
+    content artifact["bucket"].value
+    owner artifact["bag"]["project_name"]
+    group node["gearbox"]["user"]
   end
 
   # Untar it
-  script "untar-#{artifact[:bag]['project_name']}" do
+  script "untar-#{artifact["bag"]['project_name']}" do
     interpreter "bash"
-    user artifact[:bag]["project_name"]
+    user artifact["bag"]["project_name"]
     not_if { File.directory?(version_dir) }
     code <<-EOH
     mkdir -p "#{version_dir}"
@@ -155,12 +161,12 @@ artifacts.each do |artifact|
 
 
       # link uwsgi files
-      if node[:uwsgi][:app_path] 
+      if node["uwsgi"]["app_path"] 
         uwsgi_app = false
         Dir::glob("#{compiled_dir}/uwsgi/**/*.yml").each do |source_file|
-          target_file = source_file.sub("#{compiled_dir}/uwsgi", node[:uwsgi][:app_path] )
+          target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
           File.delete(target_file) if File.exists?(target_file)
-          FileUtils.mkdir_p(File.dirname(node[:uwsgi][:app_path])) unless File.exists?(node[:uwsgi][:app_path]) 
+          FileUtils.mkdir_p(File.dirname(node["uwsgi"]["app_path"])) unless File.exists?(node["uwsgi"]["app_path"]) 
           Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
           File.symlink(source_file, target_file)
           uwsgi_app = true
@@ -168,14 +174,16 @@ artifacts.each do |artifact|
       end
     end
     action :create
-    notifies :restart, resources(:service => :nginx)
+    if resources(:service => nginx)
+      notifies :restart, resources(:service => :nginx)
+    end
   end
 
   if uwsgi_app
-    group node[:uwsgi][:user] do
+    group node["uwsgi"]["user"] do
       action :modify
       append true
-      members artifact[:bag]['project_name']
+      members artifact["bag"]['project_name']
     end
   end
 
@@ -183,26 +191,26 @@ artifacts.each do |artifact|
   link current_app_dir do
     link_type :symbolic
     to version_dir
-    owner artifact[:bag]["project_name"]
-    group node[:gearbox][:user]
+    owner artifact["bag"]["project_name"]
+    group node["gearbox"]["user"]
   end
 
   # Create a logging directory
   directory File.join(artifact_dir, 'log') do 
     action :create
     recursive true
-    owner artifact[:bag]['project_name']
+    owner artifact["bag"]['project_name']
     mode '0775'
-    group node[:nginx][:user]
+    group node["nginx"]["user"] rescue node["gearbox"]["user"]
   end
 
   # Create a var directory
   directory File.join(artifact_dir, 'var') do 
     action :create
     recursive true
-    owner artifact[:bag]['project_name']
+    owner artifact["bag"]['project_name']
     mode '0775'
-    group node[:nginx][:user]
+    group node["nginx"]["user"] rescue node["gearbox"]["user"]
   end
 
   # Create the cache directory
@@ -211,13 +219,13 @@ artifacts.each do |artifact|
     recursive true
     owner artifact[:bag]['project_name']
     mode '0775'
-    group node[:nginx][:user]
+    group node["nginx"]["user"] rescue node["gearbox"]["user"]
   end
 
   # Create the cron jobs
-  if artifact[:bag]['crontabs']
-    artifact[:bag]['crontabs'].each_with_index do |task, index|
-      cron "cron-#{artifact[:bag]['project_name']}-#{index}" do
+  if artifact["bag"]['crontabs']
+    artifact["bag"]['crontabs'].each_with_index do |task, index|
+      cron "cron-#{artifact["bag"]['project_name']}-#{index}" do
 
         minute task['minute']   if task['minute']
         hour task['hour']       if task['hour']
@@ -239,7 +247,9 @@ end
 # Add nginx config
 template "/etc/nginx/conf.d/gearbox.conf" do
   source "gearbox.conf.erb"
-  owner node[:gearbox][:user]
-  group node[:gearbox][:user]
-  notifies :restart, resources(:service => :nginx)
+  owner node["gearbox"]["user"]
+  group node["gearbox"]["user"]
+  if resources(:service => :nginx)
+    notifies :restart, resources(:service => :nginx)
+  end
 end

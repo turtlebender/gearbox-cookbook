@@ -76,12 +76,12 @@ artifacts.each do |artifact|
 
   # create an application user and add it to the uwsgi and www-data
   # groups
-  user artifact["bag"]['project_name'] do
+  user artifact[:bag]['project_name'] do
     system true
   end
 
   directory artifact_dir do
-    owner artifact["bag"]["project_name"]
+    owner artifact[:bag]["project_name"]
     group node["gearbox"]["user"]
     mode '0775'
     recursive true
@@ -89,20 +89,20 @@ artifacts.each do |artifact|
 
   group node["nginx"]["user"] do
     action :modify
-    append :true
-    members artifact["bag"]["project_name"]
-    only_if node["nginx"]
+    append true
+    members artifact[:bag]["project_name"]
+    only_if { node.has_key? "nginx" }
   end
 
   group node["gearbox"]["user"] do
     action :modify
     append true
-    members artifact["bag"]["project_name"]
+    members artifact[:bag]["project_name"]
   end
 
   # Download the artifact
   directory File::dirname(tar_file) do 
-    owner artifact["bag"]["project_name"]
+    owner artifact[:bag]["project_name"]
     group node["gearbox"]["user"]
     action :create
     recursive true
@@ -110,15 +110,15 @@ artifacts.each do |artifact|
 
   file tar_file do
     action :create_if_missing
-    content artifact["bucket"].value
-    owner artifact["bag"]["project_name"]
+    content artifact[:bucket].value
+    owner artifact[:bag]["project_name"]
     group node["gearbox"]["user"]
   end
 
   # Untar it
-  script "untar-#{artifact["bag"]['project_name']}" do
+  script "untar-#{artifact[:bag]['project_name']}" do
     interpreter "bash"
-    user artifact["bag"]["project_name"]
+    user artifact[:bag]["project_name"]
     not_if { File.directory?(version_dir) }
     code <<-EOH
     mkdir -p "#{version_dir}"
@@ -162,7 +162,7 @@ artifacts.each do |artifact|
       # link uwsgi files
       if node["uwsgi"]["app_path"] 
         uwsgi_app = false
-        Dir::glob("#{compiled_dir}/uwsgi/**/*.yml").each do |source_file|
+        Dir::glob("#{compiled_dir}/uwsgi/**/*.y*ml").each do |source_file|
           target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
           File.delete(target_file) if File.exists?(target_file)
           FileUtils.mkdir_p(File.dirname(node["uwsgi"]["app_path"])) unless File.exists?(node["uwsgi"]["app_path"]) 
@@ -173,7 +173,7 @@ artifacts.each do |artifact|
       end
     end
     action :create
-    if resources(:service => nginx)
+    if resources(:service => :nginx)
       notifies :restart, resources(:service => :nginx)
     end
   end
@@ -181,15 +181,15 @@ artifacts.each do |artifact|
   group node["uwsgi"]["user"] do
     action :modify
     append true
-    members artifact["bag"]['project_name']
-    only_if uwsgi_app
+    members artifact[:bag]['project_name']
+    not_if { uwsgi_app.nil? }
   end
 
   # Create a link to the current deployment dir
   link current_app_dir do
     link_type :symbolic
     to version_dir
-    owner artifact["bag"]["project_name"]
+    owner artifact[:bag]["project_name"]
     group node["gearbox"]["user"]
   end
 
@@ -197,16 +197,16 @@ artifacts.each do |artifact|
   %w{log var cache}.each do |dirname|
     directory File.join(artifact_dir, dirname) do 
       action :create
-      owner artifact["bag"]['project_name']
+      owner artifact[:bag]['project_name']
       mode '0775'
       group node["nginx"]["user"] rescue node["gearbox"]["user"]
     end
   end
 
   # Create the cron jobs
-  if artifact["bag"]['crontabs']
-    artifact["bag"]['crontabs'].each_with_index do |task, index|
-      cron "cron-#{artifact["bag"]['project_name']}-#{index}" do
+  if artifact[:bag]['crontabs']
+    artifact[:bag]['crontabs'].each_with_index do |task, index|
+      cron "cron-#{artifact[:bag]['project_name']}-#{index}" do
 
         minute task['minute']   if task['minute']
         hour task['hour']       if task['hour']
@@ -230,7 +230,7 @@ template "/etc/nginx/conf.d/gearbox.conf" do
   source "gearbox.conf.erb"
   owner node["gearbox"]["user"]
   group node["gearbox"]["user"]
-  variables(:app_dir => node["gearbox"]["app_dir"]
+  variables(:app_dir => node["gearbox"]["app_dir"])
   if resources(:service => :nginx)
     notifies :restart, resources(:service => :nginx)
   end

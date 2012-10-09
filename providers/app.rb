@@ -40,7 +40,7 @@ action :deploy do
     end
 
     tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
-
+    Chef::Log.info ("Getting Key #{key}")
     file tar_file do
         action :create_if_missing
         content AWS::S3::S3Object.value key, new_resource.bucket
@@ -64,7 +64,32 @@ action :deploy do
     current_app_dir = ::File::join(artifact_dir, 'current')
     template_dir = Pathname.new(::File::join(version_dir, 'gbtemplate'))
     compiled_dir = Pathname.new(::File::join(version_dir, 'gbconfig'))
-    Mustache::template_path = template_dir
+    directory ::File::join(version_dir, 'gbconfig') do
+        owner name
+        group name
+        mode "0755"
+    end
+    %w{uwsgi nginx upstart}.each do |dir|
+        directory ::File.join(version_dir, 'gbconfig', dir) do 
+            owner name
+            group name
+            mode "0755"
+        end
+
+    end
+    Mustache::template_path = ::File::join(version_dir, 'gbtemplate')
+    databags ||= { } 
+    node[:gearbox][:encrypted_data_bags].each do |k,v|
+          databags[k] = v.map do |args|
+                  Chef::EncryptedDataBagItem.load(*args).to_hash
+                    end
+    end
+    node[:gearbox][:data_bags].each do |k,v|
+          databags[k] = v.map do |args|
+                  data_bag_item(*args).to_hash
+                    end
+    end
+
 
     Chef::Log.info("Generating Application Context")
     ::Dir::glob("#{template_dir}/**/*.mustache").each do |file|
@@ -89,7 +114,9 @@ action :deploy do
                 "log_dir" => log_dir,
                 "bin_dir" => ::File::join(current_app_dir, 'bin'),
                 "data_dir" => data_dir,
-                "run_dir" => run_dir}
+                "run_dir" => run_dir,
+                "loaded_data_bags" => databags
+            }
             })
         end
 
@@ -97,9 +124,7 @@ action :deploy do
         upstart_regex = %r{.*\/(.*)\.conf}
         Dir::glob("#{compiled_dir}/upstart/**/*.conf").each do |source_file|
             target_file = source_file.sub("#{compiled_dir}/upstart/", "/etc/init/")
-            script "copy upstart file" do
-                source "cp #{source_file} #{target_file}"
-            end
+            bash "cp #{source_file} #{target_file}" 
             service_name = upstart_regex.match(source_file)[1]
             Chef::Log.info("Starting service: #{service_name}")
             service service_name do

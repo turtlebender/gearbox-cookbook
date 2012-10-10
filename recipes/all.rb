@@ -1,10 +1,8 @@
-apps = node[:gearbox][:apps].map do |appname|
-      data_bag_item("gearbox", appname) 
-end
+iclude_recipe "gearbox::default"
 
-apps.each do |app|
-    gearbox_app app["name"] do
-        version app["version"]
+node["gearbox"]["apps"].each do |app|
+    gearbox_app name do
+        version node["gearbox"]["versions"][app]
         bucket node["gearbox"]["artifact_bucket"]
     end
 end

@@ -151,10 +151,6 @@ action :deploy do
     end
 end
 
-action :rollback do
-
-end
-
 action :delete do
 
 end

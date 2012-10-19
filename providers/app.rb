@@ -69,7 +69,7 @@ action :deploy do
         group name
         mode "0755"
     end
-    %w{uwsgi nginx upstart}.each do |dir|
+    %w{ uwsgi nginx upstart }.each do |dir|
         directory ::File.join(version_dir, 'gbconfig', dir) do 
             owner name
             group name
@@ -80,14 +80,14 @@ action :deploy do
     Mustache::template_path = ::File::join(version_dir, 'gbtemplate')
     databags ||= { } 
     node[:gearbox][:encrypted_data_bags].each do |k,v|
-          databags[k] = v.map do |args|
-                  Chef::EncryptedDataBagItem.load(*args).to_hash
-                    end
+        databags[k] = v.map do |args|
+            Chef::EncryptedDataBagItem.load(*args).to_hash
+        end
     end
     node[:gearbox][:data_bags].each do |k,v|
-          databags[k] = v.map do |args|
-                  data_bag_item(*args).to_hash
-                    end
+        databags[k] = v.map do |args|
+            data_bag_item(*args).to_hash
+        end
     end
 
 
@@ -120,28 +120,33 @@ action :deploy do
             })
         end
 
-        # Copy upstart files
-        upstart_regex = %r{.*\/(.*)\.conf}
-        Dir::glob("#{compiled_dir}/upstart/**/*.conf").each do |source_file|
-            target_file = source_file.sub("#{compiled_dir}/upstart/", "/etc/init/")
-            bash "cp #{source_file} #{target_file}" 
-            service_name = upstart_regex.match(source_file)[1]
-            Chef::Log.info("Starting service: #{service_name}")
-            service service_name do
-                provider Chef::Provider::Service::Upstart
-                action [:enable, :restart]
-            end
+    end
+    # Copy upstart files
+    upstart_regex = %r{.*\/(.*)\.conf}
+    Dir::glob("#{compiled_dir}/upstart/**/*.conf").each do |source_file|
+        Chef::Log.info("Copygin upstart service")
+        target_file = source_file.sub("#{compiled_dir}/upstart/", "/etc/init/")
+        execute "cp #{source_file} #{target_file}" do
+            action :run
         end
-
-        Dir::glob("#{compiled_dir}/uwsgi/**/*.y*ml").each do |source_file|
-            target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
-            FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
-            Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
-            link target_file do
-                to source_file
-            end
+        service_name = upstart_regex.match(source_file)[1]
+        Chef::Log.info("Starting service: #{service_name}")
+        service service_name do
+            provider Chef::Provider::Service::Upstart
+            action [:enable, :restart]
         end
     end
+
+    # Copy uwsgi files
+    Dir::glob("#{compiled_dir}/uwsgi/**/*.y*ml").each do |source_file|
+        target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
+        FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
+        Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
+        link target_file do
+            to source_file
+        end
+    end
+
     link current_app_dir do
         action :delete
     end
@@ -149,8 +154,4 @@ action :deploy do
         action :create
         to version_dir
     end
-end
-
-action :delete do
-
 end

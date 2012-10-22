@@ -113,6 +113,7 @@ action :deploy do
                 "group" => name,
                 "log_dir" => log_dir,
                 "bin_dir" => ::File::join(current_app_dir, 'bin'),
+                "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
                 "data_dir" => data_dir,
                 "run_dir" => run_dir,
                 "loaded_data_bags" => databags

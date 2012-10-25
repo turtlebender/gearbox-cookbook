@@ -80,6 +80,7 @@ action :deploy do
     Mustache::template_path = ::File::join(version_dir, 'gbtemplate')
     databags ||= { } 
     node[:gearbox][:encrypted_data_bags].each do |k,v|
+        Chef::Log.info("Decrypting data bags")
         databags[k] = v.map do |args|
             Chef::EncryptedDataBagItem.load(*args).to_hash
         end
@@ -108,16 +109,16 @@ action :deploy do
             group name
             variables({
                 "gearbox" => {
-                "app_home" => artifact_dir,
-                "user" => name,
-                "group" => name,
-                "log_dir" => log_dir,
-                "bin_dir" => ::File::join(current_app_dir, 'bin'),
-                "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
-                "data_dir" => data_dir,
-                "run_dir" => run_dir,
-                "loaded_data_bags" => databags
-            }
+                    "app_home" => artifact_dir,
+                    "user" => name,
+                    "group" => name,
+                    "log_dir" => log_dir,
+                    "bin_dir" => ::File::join(current_app_dir, 'bin'),
+                    "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
+                    "data_dir" => data_dir,
+                    "run_dir" => run_dir,
+                    "loaded_data_bags" => databags
+                }
             })
         end
 

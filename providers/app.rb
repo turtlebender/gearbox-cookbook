@@ -102,60 +102,46 @@ action :deploy do
 
 
     Chef::Log.info("Generating Application Context")
-    ::Dir::glob("#{template_dir}/**/*.mustache").each do |file|
-        # skip partials (templates that begin with _)
-        next if (::File.basename(file) =~ /^_/)
 
-        template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
-        target_file = ::File.join(compiled_dir, template)
+    context = node.to_hash
+    context["gearbox"] = {
+        "app_home" => artifact_dir,
+        "user" => name,
+        "group" => name,
+        "log_dir" => log_dir,
+        "bin_dir" => ::File::join(current_app_dir, 'bin'),
+        "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
+        "current_app_dir" => current_app_dir,
+        "data_dir" => data_dir,
+        "run_dir" => run_dir,
+        "loaded_data_bags" => databags,
+    }
+    context[name] = databags
 
-        # render the template
-        Chef::Log.info("Expanding mustache template #{file}")
-        gearbox_template target_file do
-            source file
-            mode "0644"
-            owner name
-            group name
-            variables({
-                "gearbox" => {
-                    "app_home" => artifact_dir,
-                    "user" => name,
-                    "group" => name,
-                    "log_dir" => log_dir,
-                    "bin_dir" => ::File::join(current_app_dir, 'bin'),
-                    "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
-                    "data_dir" => data_dir,
-                    "run_dir" => run_dir,
-                    "loaded_data_bags" => databags
-                }
-            })
-        end
+    node.set['gearbox'][name]['templates'] = {}
+    ruby_block 'process_template' do
+        block do
+            ::Dir::glob("#{template_dir}/**/*.mustache").each do |file|
+                # skip partials (templates that begin with _)
+                next if (::File.basename(file) =~ /^_/)
 
-    end
-    # Copy upstart files
-    upstart_regex = %r{.*\/(.*)\.conf}
-    Dir::glob("#{compiled_dir}/upstart/**/*.conf").each do |source_file|
-        Chef::Log.info("Copygin upstart service")
-        target_file = source_file.sub("#{compiled_dir}/upstart/", "/etc/init/")
-        execute "cp #{source_file} #{target_file}" do
-            action :run
+                template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
+                target_file = ::File.join(compiled_dir, template)
+                node.set['gearbox'][name]['templates'][target_file] = file
+                node.save
+            end
+
         end
-        service_name = upstart_regex.match(source_file)[1]
-        Chef::Log.info("Starting service: #{service_name}")
-        service service_name do
-            provider Chef::Provider::Service::Upstart
-            action [:enable, :restart]
-        end
+        notifies :create, "gearbox_templates[#{name}]"
     end
 
-    # Copy uwsgi files
-    Dir::glob("#{compiled_dir}/uwsgi/**/*.y*ml").each do |source_file|
-        target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
-        FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
-        Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
-        link target_file do
-            to source_file
-        end
+    # render the templates
+    gearbox_templates name do
+        action :nothing
+        mode "0644"
+        group name
+        owner name
+        variables(context)
     end
 
     link current_app_dir do

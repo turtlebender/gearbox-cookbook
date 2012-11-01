@@ -33,15 +33,27 @@ action :deploy do
         end
     end
 
-    tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
-    Chef::Log.info ("Getting Key #{key}")
-    file tar_file do
-        action :create_if_missing
-        content AWS::S3::S3Object.value key, new_resource.bucket
-        owner name
-        group name
+    unless new_resource.local_path.nil?
+        local_path = ::File.join(new_resource.local_path, key)
+        execute "cp #{local_path} #{tar_file}"
+    else
+        unless new_resource.url.nil?
+            remote_file tar_file do
+                source new_resource.url
+            end
+        else
+            unless new_resource.bucket.nil?
+                file tar_file do
+                    action :create_if_missing
+                    content AWS::S3::S3Object.value key, new_resource.bucket
+                    owner name
+                    group name
+                end
+            else
+                Chef::Log.warn("I don't know how to get your artifact.")
+            end
+        end
     end
-
     version_dir = ::File::join(versions_dir, version)
 
     script "untar-#{name}" do

@@ -2,15 +2,9 @@ require "rubygems"
 require "pathname"
 require "tempfile"
 
+include_recipe "gearbox::default"
 action :deploy do
 
-    directory '/usr/share/gearbox' do
-        owner 'gearbox'
-        group 'gearbox'
-        mode "0775"
-    end
-
-    version = new_resource.version
     name = new_resource.name
 
     user name do
@@ -23,14 +17,17 @@ action :deploy do
         members %w{gearbox}.select { |user| node.key? user }
     end
 
+    version = new_resource.version
     key = "#{name}/#{version}.tar.gz"
     artifact_dir = ::File::join(node["gearbox"]["app_dir"], name)
     versions_dir = ::File::join(artifact_dir, "versions")
     tar_dir = ::File::join(artifact_dir, "tars")
+    tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
     var_dir = ::File::join(artifact_dir, "var")
     log_dir = ::File::join(var_dir, "log")
     data_dir = ::File::join(var_dir, "data")
     run_dir = ::File::join(var_dir, "run")
+
     [artifact_dir, versions_dir, tar_dir, var_dir, log_dir, data_dir, log_dir].each do |dir|
         directory dir do
             owner name
@@ -39,15 +36,27 @@ action :deploy do
         end
     end
 
-    tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
-    Chef::Log.info ("Getting Key #{key}")
-    file tar_file do
-        action :create_if_missing
-        content AWS::S3::S3Object.value key, new_resource.bucket
-        owner name
-        group name
+    unless new_resource.local_path.nil?
+        local_path = ::File.join(new_resource.local_path, key)
+        execute "cp #{local_path} #{tar_file}"
+    else
+        unless new_resource.url.nil?
+            remote_file tar_file do
+                source new_resource.url
+            end
+        else
+            unless new_resource.bucket.nil?
+                file tar_file do
+                    action :create_if_missing
+                    content AWS::S3::S3Object.value key, new_resource.bucket
+                    owner name
+                    group name
+                end
+            else
+                Chef::Log.warn("I don't know how to get your artifact.")
+            end
+        end
     end
-
     version_dir = ::File::join(versions_dir, version)
 
     script "untar-#{name}" do
@@ -93,60 +102,46 @@ action :deploy do
 
 
     Chef::Log.info("Generating Application Context")
-    ::Dir::glob("#{template_dir}/**/*.mustache").each do |file|
-        # skip partials (templates that begin with _)
-        next if (::File.basename(file) =~ /^_/)
 
-        template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
-        target_file = ::File.join(compiled_dir, template)
+    context = node.to_hash
+    context["gearbox"] = {
+        "app_home" => artifact_dir,
+        "user" => name,
+        "group" => name,
+        "log_dir" => log_dir,
+        "bin_dir" => ::File::join(current_app_dir, 'bin'),
+        "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
+        "current_app_dir" => current_app_dir,
+        "data_dir" => data_dir,
+        "run_dir" => run_dir,
+        "loaded_data_bags" => databags,
+    }
+    context[name] = databags
 
-        # render the template
-        Chef::Log.info("Expanding mustache template #{file}")
-        gearbox_template target_file do
-            source file
-            mode "0644"
-            owner name
-            group name
-            variables({
-                "gearbox" => {
-                    "app_home" => artifact_dir,
-                    "user" => name,
-                    "group" => name,
-                    "log_dir" => log_dir,
-                    "bin_dir" => ::File::join(current_app_dir, 'bin'),
-                    "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
-                    "data_dir" => data_dir,
-                    "run_dir" => run_dir,
-                    "loaded_data_bags" => databags
-                }
-            })
-        end
+    node.set['gearbox'][name]['templates'] = {}
+    ruby_block 'process_template' do
+        block do
+            ::Dir::glob("#{template_dir}/**/*.mustache").each do |file|
+                # skip partials (templates that begin with _)
+                next if (::File.basename(file) =~ /^_/)
 
-    end
-    # Copy upstart files
-    upstart_regex = %r{.*\/(.*)\.conf}
-    Dir::glob("#{compiled_dir}/upstart/**/*.conf").each do |source_file|
-        Chef::Log.info("Copygin upstart service")
-        target_file = source_file.sub("#{compiled_dir}/upstart/", "/etc/init/")
-        execute "cp #{source_file} #{target_file}" do
-            action :run
+                template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
+                target_file = ::File.join(compiled_dir, template)
+                node.set['gearbox'][name]['templates'][target_file] = file
+                node.save
+            end
+
         end
-        service_name = upstart_regex.match(source_file)[1]
-        Chef::Log.info("Starting service: #{service_name}")
-        service service_name do
-            provider Chef::Provider::Service::Upstart
-            action [:enable, :restart]
-        end
+        notifies :create, "gearbox_templates[#{name}]"
     end
 
-    # Copy uwsgi files
-    Dir::glob("#{compiled_dir}/uwsgi/**/*.y*ml").each do |source_file|
-        target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
-        FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
-        Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
-        link target_file do
-            to source_file
-        end
+    # render the templates
+    gearbox_templates name do
+        action :nothing
+        mode "0644"
+        group name
+        owner name
+        variables(context)
     end
 
     link current_app_dir do

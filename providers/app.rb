@@ -17,14 +17,17 @@ action :deploy do
         members %w{gearbox}.select { |user| node.key? user }
     end
 
+    version = new_resource.version
     key = "#{name}/#{version}.tar.gz"
     artifact_dir = ::File::join(node["gearbox"]["app_dir"], name)
     versions_dir = ::File::join(artifact_dir, "versions")
     tar_dir = ::File::join(artifact_dir, "tars")
+    tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
     var_dir = ::File::join(artifact_dir, "var")
     log_dir = ::File::join(var_dir, "log")
     data_dir = ::File::join(var_dir, "data")
     run_dir = ::File::join(var_dir, "run")
+
     [artifact_dir, versions_dir, tar_dir, var_dir, log_dir, data_dir, log_dir].each do |dir|
         directory dir do
             owner name

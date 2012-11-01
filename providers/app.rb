@@ -2,7 +2,6 @@ require "rubygems"
 require "pathname"
 require "tempfile"
 
-include_recipe "gearbox::default"
 action :deploy do
 
     name = new_resource.name
@@ -36,8 +35,8 @@ action :deploy do
         end
     end
 
-    unless new_resource.local_path.nil?
-        local_path = ::File.join(new_resource.local_path, key)
+    if node['gearbox']['local_path']
+        local_path = ::File.join(node['gearbox']['local_path'], key)
         execute "cp #{local_path} #{tar_file}"
     else
         unless new_resource.url.nil?
@@ -73,6 +72,7 @@ action :deploy do
     current_app_dir = ::File::join(artifact_dir, 'current')
     template_dir = Pathname.new(::File::join(version_dir, 'gbtemplate'))
     compiled_dir = Pathname.new(::File::join(version_dir, 'gbconfig'))
+    Mustache::template_path = ::File::join(version_dir, 'gbtemplate')
     directory ::File::join(version_dir, 'gbconfig') do
         owner name
         group name
@@ -86,24 +86,51 @@ action :deploy do
         end
 
     end
-    Mustache::template_path = ::File::join(version_dir, 'gbtemplate')
-    databags ||= { } 
-    node[:gearbox][:encrypted_data_bags].each do |k,v|
-        Chef::Log.info("Decrypting data bags")
-        databags[k] = v.map do |args|
-            Chef::EncryptedDataBagItem.load(*args).to_hash
-        end
-    end
-    node[:gearbox][:data_bags].each do |k,v|
-        databags[k] = v.map do |args|
-            data_bag_item(*args).to_hash
-        end
-    end
 
+    gearbox_data_bag = data_bag_item('gearbox', name)
 
     Chef::Log.info("Generating Application Context")
-
+    # Construct the context for mustache from the node and the
+    # app's data bag
     context = node.to_hash
+    context = context.merge gearbox_data_bag.to_hash
+
+    # Run and store the search data in the context
+
+    (gearbox_data_bag['searches'] || []).each do |search|
+        matching_nodes = search(:node, "roles:#{search['role']} AND chef_environment:#{node.chef_environment}")
+        results = matching_nodes.map do |result|
+            { search['attribute'] => result[search['attribute']] }
+        end
+        if search['multiple']
+            context[search['name']] = results
+        else
+            context[search['name']] = results.first
+        end
+    end
+
+    # Load additional data bags
+    databags ||= { } 
+
+    Chef::Log.info("Loading additional data bags as specified")
+    [ node[:gearbox][:encrypted_data_bags] || [], gearbox_data_bag['encrypted_data_bags'] || [] ].each do |encrypted_data_bag_entry|
+
+        encrypted_data_bag_entry.each do |k,v|
+            databags[k] = v.map do |args|
+                Chef::EncryptedDataBagItem.load(*args).to_hash
+            end
+        end
+    end
+
+    [ node[:gearbox][:data_bags] || [], gearbox_data_bag['data_bags'] || [] ].each do |data_bag_entry|
+
+        data_bag_entry.each do |k,v|
+            databags[k] = v.map do |args|
+                data_bag_item(*args).to_hash
+            end
+        end
+    end
+
     context["gearbox"] = {
         "app_home" => artifact_dir,
         "user" => name,
@@ -116,6 +143,9 @@ action :deploy do
         "run_dir" => run_dir,
         "loaded_data_bags" => databags,
     }
+
+    context = context.merge context["gearbox"]
+
     context[name] = databags
 
     node.set['gearbox'][name]['templates'] = {}

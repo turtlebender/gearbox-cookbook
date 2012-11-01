@@ -2,15 +2,9 @@ require "rubygems"
 require "pathname"
 require "tempfile"
 
+include_recipe "gearbox::default"
 action :deploy do
 
-    directory '/usr/share/gearbox' do
-        owner 'gearbox'
-        group 'gearbox'
-        mode "0775"
-    end
-
-    version = new_resource.version
     name = new_resource.name
 
     user name do

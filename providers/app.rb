@@ -18,20 +18,20 @@ action :deploy do
 
     version = new_resource.version
     key = "#{name}/#{version}.tar.gz"
-    artifact_dir = ::File::join(node["gearbox"]["app_dir"], name)
-    versions_dir = ::File::join(artifact_dir, "versions")
-    tar_dir = ::File::join(artifact_dir, "tars")
+    artifact_dir = ::File::join(node['gearbox']['app_dir'], name)
+    versions_dir = ::File::join(artifact_dir, 'versions')
+    tar_dir = ::File::join(artifact_dir, 'tars')
     tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
-    var_dir = ::File::join(artifact_dir, "var")
-    log_dir = ::File::join(var_dir, "log")
-    data_dir = ::File::join(var_dir, "data")
-    run_dir = ::File::join(var_dir, "run")
+    var_dir = ::File::join(artifact_dir, 'var')
+    log_dir = ::File::join(var_dir, 'log')
+    data_dir = ::File::join(var_dir, 'data')
+    run_dir = ::File::join(var_dir, 'run')
 
     [artifact_dir, versions_dir, tar_dir, var_dir, log_dir, data_dir, log_dir].each do |dir|
         directory dir do
             owner name
             group name
-            mode "0775"
+            mode '077'5
         end
     end
 
@@ -52,7 +52,7 @@ action :deploy do
                     group name
                 end
             else
-                Chef::Log.warn("I don't know how to get your artifact.")
+                Chef::Log.warn('I do not know how to get your artifact.')
             end
         end
     end
@@ -76,20 +76,20 @@ action :deploy do
     directory ::File::join(version_dir, 'gbconfig') do
         owner name
         group name
-        mode "0755"
+        mode '0755'
     end
     %w{ uwsgi nginx upstart }.each do |dir|
         directory ::File.join(version_dir, 'gbconfig', dir) do 
             owner name
             group name
-            mode "0755"
+            mode '0755'
         end
 
     end
 
     gearbox_data_bag = data_bag_item('gearbox', name)
 
-    Chef::Log.info("Generating Application Context")
+    Chef::Log.info('Generating Application Context')
     # Construct the context for mustache from the node and the
     # app's data bag
     context = node.to_hash
@@ -112,8 +112,8 @@ action :deploy do
     # Load additional data bags
     databags ||= { } 
 
-    Chef::Log.info("Loading additional data bags as specified")
-    [ node[:gearbox][:encrypted_data_bags] || [], gearbox_data_bag['encrypted_data_bags'] || [] ].each do |encrypted_data_bag_entry|
+    Chef::Log.info('Loading additional data bags as specified')
+    [ node['gearbox']['encrypted_data_bags'] || [], gearbox_data_bag['encrypted_data_bags'] || [] ].each do |encrypted_data_bag_entry|
 
         encrypted_data_bag_entry.each do |k,v|
             databags[k] = v.map do |args|
@@ -122,7 +122,7 @@ action :deploy do
         end
     end
 
-    [ node[:gearbox][:data_bags] || [], gearbox_data_bag['data_bags'] || [] ].each do |data_bag_entry|
+    [ node['gearbox']['data_bags'] || [], gearbox_data_bag['data_bags'] || [] ].each do |data_bag_entry|
 
         data_bag_entry.each do |k,v|
             databags[k] = v.map do |args|
@@ -131,20 +131,20 @@ action :deploy do
         end
     end
 
-    context["gearbox"] = {
-        "app_home" => artifact_dir,
-        "user" => name,
-        "group" => name,
-        "log_dir" => log_dir,
-        "bin_dir" => ::File::join(current_app_dir, 'bin'),
-        "config_dir" => ::File::join(current_app_dir, 'gbconfig'),
-        "current_app_dir" => current_app_dir,
-        "data_dir" => data_dir,
-        "run_dir" => run_dir,
-        "loaded_data_bags" => databags,
+    context['gearbox'] = {
+        'app_home' => artifact_dir,
+        'user' => name,
+        'group' => name,
+        'log_dir' => log_dir,
+        'bin_dir' => ::File::join(current_app_dir, 'bin'),
+        'config_dir' => ::File::join(current_app_dir, 'gbconfig'),
+        'current_app_dir' => current_app_dir,
+        'data_dir' => data_dir,
+        'run_dir' => run_dir,
+        'loaded_data_bags' => databags,
     }
 
-    context = context.merge context["gearbox"]
+    context = context.merge context['gearbox']
 
     context[name] = databags
 
@@ -168,7 +168,7 @@ action :deploy do
     # render the templates
     gearbox_templates name do
         action :nothing
-        mode "0644"
+        mode '0644'
         group name
         owner name
         variables(context)

@@ -96,7 +96,7 @@ action :deploy do
             results = matching_nodes.map do |result|
                 { search['attribute'] => result[search['attribute']] }
             end
-            if (search['multiple'] || false)
+            if search['multiple']
                 context[search['name']] = results
             else
                 context[search['name']] = results.first

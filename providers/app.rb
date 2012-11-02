@@ -94,8 +94,10 @@ action :deploy do
     # app's data bag
     context = node.to_hash
     app_context = context[name] || Hash.new
-    app_context[name] = app_context
-    context = app_context.merge gearbox_data_bag.to_hash
+    app_context = app_context.merge gearbox_data_bag.to_hash
+    context[name] = app_context
+    breakpoint "merged_gearbox_data_bag"
+
 
     # Run and store the search data in the context
 
@@ -112,7 +114,7 @@ action :deploy do
     end
 
     # Load additional data bags
-    databags ||= { } 
+    databags = { } 
 
     Chef::Log.info('Loading additional data bags as specified')
     [ node['gearbox']['encrypted_data_bags'] || [], gearbox_data_bag['encrypted_data_bags'] || [] ].each do |encrypted_data_bag_entry|
@@ -134,6 +136,7 @@ action :deploy do
     end
 
     app_context.merge databags
+    breakpoint "merged_data_bags"
     begin
         context['gearbox']['loaded_data_bags'] = databags 
     rescue
@@ -155,8 +158,8 @@ action :deploy do
 
     context = context.merge context['gearbox']
 
-    context[name] = databags
-
+    context[name] = app_context.merge databags
+    breakpoint "finished_merging_context"
     node.set['gearbox'][name]['templates'] = {}
     ruby_block 'process_template' do
         block do
@@ -174,6 +177,7 @@ action :deploy do
         notifies :create, "gearbox_templates[#{name}]"
     end
 
+    Chef::Log.info("Context for #{name}: #{pp(context[name])}")
     # render the templates
     gearbox_templates name do
         action :nothing

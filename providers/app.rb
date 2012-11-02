@@ -133,6 +133,13 @@ action :deploy do
         end
     end
 
+    app_context.merge databags
+    begin
+        context['gearbox']['loaded_data_bags'] = databags 
+    rescue
+        context['gearbox'] = {'loaded_data_bags' => databags}
+    end
+
     context['gearbox'] = {
         'app_home' => artifact_dir,
         'user' => name,

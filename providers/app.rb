@@ -31,7 +31,7 @@ action :deploy do
         directory dir do
             owner name
             group name
-            mode '077'5
+            mode '0775'
         end
     end
 
@@ -93,7 +93,9 @@ action :deploy do
     # Construct the context for mustache from the node and the
     # app's data bag
     context = node.to_hash
-    context = context.merge gearbox_data_bag.to_hash
+    app_context = context[name] || Hash.new
+    app_context[name] = app_context
+    context = app_context.merge gearbox_data_bag.to_hash
 
     # Run and store the search data in the context
 
@@ -103,9 +105,9 @@ action :deploy do
             { search['attribute'] => result[search['attribute']] }
         end
         if search['multiple']
-            context[search['name']] = results
+            context[name][search['name']] = results
         else
-            context[search['name']] = results.first
+            context[name][search['name']] = results.first
         end
     end
 

@@ -150,6 +150,7 @@ action :deploy do
         'log_dir' => log_dir,
         'bin_dir' => ::File::join(current_app_dir, 'bin'),
         'config_dir' => ::File::join(current_app_dir, 'gbconfig'),
+        'gbconfig' => ::File::join(current_app_dir, 'gbconfig'),
         'current_app_dir' => current_app_dir,
         'data_dir' => data_dir,
         'run_dir' => run_dir,

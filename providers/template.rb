@@ -16,7 +16,7 @@ end
 
 action :create do
     Chef::Log.info("Rendering mustache template: #{new_resource.path}")
-    template = Pathname.new(new_resource.source.sub(%r{\.mustache$}, ''))
+    template = Pathname.new(@new_resource.source.sub(%r{\.mustache$}, ''))
     update = ::File.exist?(@new_resource.path)
     context = node.to_hash
     context = context.merge @new_resource.additional_context
@@ -24,7 +24,9 @@ action :create do
         mode = @new_resource.mode
         owner = @new_resource.owner
         group = @new_resource.group
-        file @new_resource.path do
+        target = @new_resource.path
+        file target do
+            action :nothing
             content rendered_template
             mode mode
             owner owner
@@ -32,8 +34,8 @@ action :create do
         end.run_action(:create)
 
         # Copy upstart files
-        if ( @new_resource.path =~ /upstart\/.*/ )
-            upstart_regex = %r{.*\/(.*)\.conf}
+        if ( @new_resource.path =~ %r{.*/upstart/.*} )
+            upstart_regex = %r{.*/(.*)\.conf}
             service_name = upstart_regex.match(@new_resource.path)[1]
             upstart_config = file "/etc/init/#{service_name}.conf" do
                 content rendered_template
@@ -52,17 +54,19 @@ action :create do
             end
         end
 
-        if ( @new_resource.path =~ /uwsgi\/.*.mustache$/ )
+        if ( @new_resource.path =~ %r{.*/uwsgi/(.*.yaml)} )
+            Chef::Log.info("Matching template: #{@new_resource.path}")
 
-            target_file = source_file.sub("#{compiled_dir}/uwsgi", node["uwsgi"]["app_path"] )
+            target_file = ::File.join(node["uwsgi"]["app_path"], $1)
             FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
-            Chef::Log.info("Linking source_file #{source_file} to target_file #{target_file}")
+            Chef::Log.info("Linking source_file #{@new_resource.path} to target_file #{target_file}")
+            source = @new_resource.path
             link target_file do
                 action :nothing
-                to source_file
+                to source
             end.run_action(:create)
 
-            file source_file do
+            file source do
                 action :nothing
             end.run_action(:touch)
         end

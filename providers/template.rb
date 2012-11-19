@@ -58,7 +58,7 @@ action :create do
             Chef::Log.info("Matching template: #{@new_resource.path}")
 
             target_file = ::File.join(node["uwsgi"]["app_path"], $1)
-            FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"]) 
+            FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"])
             Chef::Log.info("Linking source_file #{@new_resource.path} to target_file #{target_file}")
             source = @new_resource.path
             link target_file do
@@ -70,5 +70,23 @@ action :create do
                 action :nothing
             end.run_action(:touch)
         end
+
+        if ( @new_resource.path =~ %r{.*/nginx/(sites-available/.*)} )
+            Chef::Log.info("Matching template: #{@new_resource.path}")
+
+            target_file = ::File.join(node["nginx"]["prefix"], $1)
+            FileUtils.mkdir_p(::File.dirname(node["nginx"]["app_path"])) unless ::File.exists?(node["nginx"]["app_path"])
+            Chef::Log.info("Linking source_file #{@new_resource.path} to target_file #{target_file}")
+            source = @new_resource.path
+            link target_file do
+                action :nothing
+                to source
+            end.run_action(:create)
+
+            file source do
+                action :nothing
+            end.run_action(:touch)
+        end
+
     end
 end

@@ -35,15 +35,15 @@ action :create do
 
         # Copy upstart files
         if ( @new_resource.path =~ %r{.*/upstart/.*} )
-            upstart_config rendered_template, @new_resource.path
+            upstart_config_template rendered_template, @new_resource.path
         end
 
         if ( @new_resource.path =~ %r{.*/uwsgi/(.*.yaml)} )
-            uwsgi_app rendered_template, @new_resource.path, $1
+            uwsgi_app_template rendered_template, @new_resource.path, $1
         end
 
         if ( @new_resource.path =~ %r{.*/nginx/(.*)} )
-            nginx_site rendered_template, $1
+            nginx_site_template rendered_template, $1
        end
     end
 end

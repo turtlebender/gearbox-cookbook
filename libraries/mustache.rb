@@ -9,32 +9,28 @@ module ChefMustache
         include Chef::Mixin::Checksum
 
         def render_template(source, context)
-            begin
-                template = open(source, 'r').read()
-                result = Mustache.render(template, context)
-                yield result
-            rescue Object => e
-                raise MustacheError.new(e, template, context)
-            end
+            template = open(source, 'r').read()
+            result = Mustache.render(template, context)
+            yield result
         end
     end
 
-    class MustacheError < RuntimeError
-        attr_reader :original_exception, :context
-        SOURCE_CONTEXT_WINDOW = 2
+    #class MustacheError < RuntimeError
+        #attr_reader :original_exception, :context
+        #SOURCE_CONTEXT_WINDOW = 2
 
-        def initialize(original_exception, template, context)
-            @original_exception, @template, @context = original_exception, template, context
-        end
+        #def initialize(original_exception, template, context)
+            #@original_exception, @template, @context = original_exception, template, context
+        #end
 
-        def message
-            @original_exception.message
-        end
+        #def message
+            #@original_exception.message
+        #end
 
-        def to_s
-            "\n\n#{self.class} (#{message})\n\n"
-        end
-    end
+        #def to_s
+            #"\n\n#{self.class} (#{message})\n\n"
+        #end
+    #end
 
 end
 

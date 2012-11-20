@@ -1,9 +1,9 @@
-def uwsgi_app(rendered_template, path, app_name)
+def uwsgi_app_template(rendered_template, path, app_name)
     Chef::Log.info("Matching template: #{path}")
 
     target_file = ::File.join(node["uwsgi"]["app_path"], app_name)
 
-    Chef::Log.info("Linking source_file #{.path} to target_file #{target_file}")
+    Chef::Log.info("Linking source_file #{path} to target_file #{target_file}")
 
     source = path
 

@@ -1,4 +1,4 @@
-def upstart_config( rendered_template, path )
+def upstart_config_template( rendered_template, path )
             upstart_regex = %r{.*/(.*)\.conf}
             service_name = upstart_regex.match(path)[1]
     upstart_config = file "/etc/init/#{service_name}.conf" do

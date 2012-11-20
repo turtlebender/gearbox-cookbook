@@ -35,58 +35,15 @@ action :create do
 
         # Copy upstart files
         if ( @new_resource.path =~ %r{.*/upstart/.*} )
-            upstart_regex = %r{.*/(.*)\.conf}
-            service_name = upstart_regex.match(@new_resource.path)[1]
-            upstart_config = file "/etc/init/#{service_name}.conf" do
-                content rendered_template
-                action :nothing
-            end
-            upstart_config.run_action(:create)
-
-            service = service service_name do
-                provider Chef::Provider::Service::Upstart
-                action :nothing
-            end
-
-            if upstart_config.updated?
-                service.run_action(:enable)
-                service.run_action(:restart)
-            end
+            upstart_config rendered_template, @new_resource.path
         end
 
         if ( @new_resource.path =~ %r{.*/uwsgi/(.*.yaml)} )
-            Chef::Log.info("Matching template: #{@new_resource.path}")
-
-            target_file = ::File.join(node["uwsgi"]["app_path"], $1)
-            FileUtils.mkdir_p(::File.dirname(node["uwsgi"]["app_path"])) unless ::File.exists?(node["uwsgi"]["app_path"])
-            Chef::Log.info("Linking source_file #{@new_resource.path} to target_file #{target_file}")
-            source = @new_resource.path
-            link target_file do
-                action :nothing
-                to source
-            end.run_action(:create)
-
-            file source do
-                action :nothing
-            end.run_action(:touch)
+            uwsgi_app rendered_template, @new_resource.path, $1
         end
 
-        if ( @new_resource.path =~ %r{.*/nginx/(sites-available/.*)} )
-            Chef::Log.info("Matching template: #{@new_resource.path}")
-
-            target_file = ::File.join(node["nginx"]["prefix"], $1)
-            FileUtils.mkdir_p(::File.dirname(node["nginx"]["app_path"])) unless ::File.exists?(node["nginx"]["app_path"])
-            Chef::Log.info("Linking source_file #{@new_resource.path} to target_file #{target_file}")
-            source = @new_resource.path
-            link target_file do
-                action :nothing
-                to source
-            end.run_action(:create)
-
-            file source do
-                action :nothing
-            end.run_action(:touch)
-        end
-
+        if ( @new_resource.path =~ %r{.*/nginx/(.*)} )
+            nginx_site rendered_template, $1
+       end
     end
 end

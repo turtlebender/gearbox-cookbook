@@ -31,7 +31,7 @@ end
 require "aws/s3"
 require "mustache"
 
-aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", "application")
+aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
 access_key_id = aws_creds["aws_access_key_id"]
 secret_access_key = aws_creds["aws_secret_access_key"]
 

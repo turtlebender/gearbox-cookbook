@@ -178,7 +178,6 @@ action :deploy do
         notifies :create, "gearbox_templates[#{name}]"
     end
 
-    Chef::Log.info("Context for #{name}: #{pp(context[name])}")
     # render the templates
     gearbox_templates name do
         action :nothing

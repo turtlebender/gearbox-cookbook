@@ -120,7 +120,7 @@ action :deploy do
     lb_list = Array.new
 
     if gearbox_data_bag.include?("load_balance")
-        lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]} AND chef_environment:#{node['chef_environment']}")
+        lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]} AND chef_environment:#{node.chef_environment}")
         if lbs.empty?
             lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]}")
         end

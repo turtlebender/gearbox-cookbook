@@ -44,7 +44,7 @@ action :deploy do
                 source new_resource.url
             end
         else
-            unless new_resource.bucket.nil?
+            unless new_resource.bucket.nil? || node['gearbox']['bucket']
                 file tar_file do
                     action :create_if_missing
                     content AWS::S3::S3Object.value key, new_resource.bucket
@@ -102,16 +102,30 @@ action :deploy do
     # Run and store the search data in the context
 
     (gearbox_data_bag['searches'] || []).each do |search|
-        matching_nodes = search(:node, "roles:#{search['role']} AND chef_environment:#{node.chef_environment}")
-        results = matching_nodes.map do |result|
-            { search['attribute'] => result[search['attribute']] }
+        query = "roles:#{search['role']}"
+        if !search.include?("multi_environment") || !search["multi_environment"]
+            query = "{0} AND chef_environment:#{node.chef_environment}"
+            matching_nodes = search(:node, query)
+            results = matching_nodes.map do |result|
+                { search['attribute'] => result[search['attribute']] }
+            end
         end
-        if search['multiple']
+        if search.include?("multiple") || search['multiple']
             context[name][search['name']] = results
         else
             context[name][search['name']] = results.first
         end
     end
+
+    lb_list = Array.new
+
+    if gearbox_data_bag.include?("load_balance")
+        lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]}")
+        lb_list = lbs.map do |lb|
+            { "socket" => "#{lb.ipaddress}#{lb['uwsgi']['fast_router']['subscription_socket']}"}
+        end
+    end
+
 
     # Load additional data bags
     databags = { } 
@@ -155,6 +169,7 @@ action :deploy do
         'data_dir' => data_dir,
         'run_dir' => run_dir,
         'loaded_data_bags' => databags,
+        'load_balancers' => lb_list,
     }
 
     context = context.merge context['gearbox']

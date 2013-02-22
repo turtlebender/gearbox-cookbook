@@ -16,6 +16,12 @@ action :deploy do
         members %w{gearbox}.select { |user| node.key? user }
     end
 
+    group node['uwsgi']['user'] do
+      action :modify
+      members name
+      append true
+    end
+
     version = new_resource.version
     key = "#{name}/#{version}.tar.gz"
     artifact_dir = ::File::join(node['gearbox']['app_dir'], name)

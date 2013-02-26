@@ -85,7 +85,7 @@ action :deploy do
         mode '0755'
     end
     %w{ uwsgi nginx upstart }.each do |dir|
-        directory ::File.join(version_dir, 'gbconfig', dir) do 
+        directory ::File.join(version_dir, 'gbconfig', dir) do
             owner name
             group name
             mode '0755'
@@ -137,7 +137,7 @@ action :deploy do
 
 
     # Load additional data bags
-    databags = { } 
+    databags = { }
 
     Chef::Log.info('Loading additional data bags as specified')
     [ node['gearbox']['encrypted_data_bags'] || [], gearbox_data_bag['encrypted_data_bags'] || [] ].each do |encrypted_data_bag_entry|
@@ -161,7 +161,7 @@ action :deploy do
     app_context.merge databags
     breakpoint "merged_data_bags"
     begin
-        context['gearbox']['loaded_data_bags'] = databags 
+        context['gearbox']['loaded_data_bags'] = databags
     rescue
         context['gearbox'] = {'loaded_data_bags' => databags}
     end
@@ -195,7 +195,9 @@ action :deploy do
                 template = Pathname.new(file.sub(/\.mustache$/,'')).relative_path_from(template_dir)
                 target_file = ::File.join(compiled_dir, template)
                 node.set['gearbox'][name]['templates'][target_file] = file
-                node.save
+                if not Chef::Config[:solo]
+                    node.save
+                end
             end
 
         end

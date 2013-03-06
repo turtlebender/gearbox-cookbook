@@ -32,8 +32,9 @@ action :deploy do
     log_dir = ::File::join(var_dir, 'log')
     data_dir = ::File::join(var_dir, 'data')
     run_dir = ::File::join(var_dir, 'run')
+    spool_dir = ::File::join(var_dir, 'spool')
 
-    [artifact_dir, versions_dir, tar_dir, var_dir, log_dir, data_dir, log_dir].each do |dir|
+    [artifact_dir, versions_dir, tar_dir, var_dir, log_dir, data_dir, log_dir, spool_dir].each do |dir|
         directory dir do
             owner name
             group name

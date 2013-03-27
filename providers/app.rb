@@ -16,6 +16,13 @@ action :deploy do
         members %w{gearbox}.select { |user| node.key? user }
     end
 
+    directory "/home/#{name}" do
+      action :create
+      owner name
+      group name
+      recursive true
+    end
+
     group node['uwsgi']['user'] do
       action :modify
       members name

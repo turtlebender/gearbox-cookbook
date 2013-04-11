@@ -243,8 +243,12 @@ action :deploy do
         to version_dir
     end
 
-    # Clean up old versions
-    cleanup_files(versions_dir, new_resource.keep_version_count)
-    # Clean up old tarballs
-    cleanup_files(tar_dir, new_resource.keep_version_count)
+    begin
+      # Clean up old versions
+      cleanup_files(versions_dir, new_resource.keep_version_count)
+      # Clean up old tarballs
+      cleanup_files(tar_dir, new_resource.keep_version_count)
+    rescue
+      Chef::Log.info("Unable to cleanup old versions")
+    end
 end

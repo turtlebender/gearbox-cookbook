@@ -1,6 +1,20 @@
 require "rubygems"
 require "pathname"
 require "tempfile"
+require 'fileutils'
+
+def cleanup_files(dir, count)
+  keep_index = (-1 * count) -1
+  ::Dir.entries(dir).select { |f|
+    f != '.' && f != '..'
+  }.map { |f|
+    ::File.join(dir, f)
+  }.sort_by { |f|
+    ::File.mtime f
+  }[0..keep_index].each { |f|
+    ::FileUtils.rm_rf f
+  }
+end
 
 action :deploy do
 
@@ -228,4 +242,9 @@ action :deploy do
         action :create
         to version_dir
     end
+
+    # Clean up old versions
+    cleanup_files(versions_dir, new_resource.keep_version_count)
+    # Clean up old tarballs
+    cleanup_files(tar_dir, new_resource.keep_version_count)
 end

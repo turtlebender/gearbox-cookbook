@@ -5,3 +5,4 @@ attribute :version, :kind_of => String
 attribute :bucket, :kind_of => String
 attribute :url, :kind_of => String
 attribute :local_path, :kind_of => String
+attribute :keep_version_count, :kind_of => Integer, :default => 5

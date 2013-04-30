@@ -20,25 +20,21 @@ user "gearbox" do
   system true
 end
 
-chef_gem "aws-s3" do
-  action :install
+aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
+
+aws_sdk_connection 'base' do
+  action [:install, :configure]
+  access_key_id aws_creds["aws_access_key_id"]
+  secret_access_key aws_creds["aws_secret_access_key"]
 end
 
 chef_gem "mustache" do
   action :install
 end
 
-require "aws/s3"
 require "mustache"
 
-aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
-access_key_id = aws_creds["aws_access_key_id"]
-secret_access_key = aws_creds["aws_secret_access_key"]
-
-AWS::S3::Base.establish_connection!(
-  :access_key_id     => access_key_id,
-  :secret_access_key => secret_access_key
-)
+config = { :region => 'us-east-1' }
 
 directory node['gearbox']['app_dir'] do
   owner 'gearbox'

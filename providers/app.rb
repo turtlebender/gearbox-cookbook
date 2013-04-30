@@ -73,12 +73,13 @@ action :deploy do
             end
         else
             unless new_resource.bucket.nil? || node['gearbox']['bucket']
-                file tar_file do
-                    action :create_if_missing
-                    content AWS::S3::S3Object.value key, new_resource.bucket
-                    owner name
-                    group name
-                end
+              aws_sdk_s3_file tar_file do
+                action :download
+                bucket new_resource.bucket
+                key key
+                owner name
+                group name
+              end
             else
                 Chef::Log.warn('I do not know how to get your artifact.')
             end

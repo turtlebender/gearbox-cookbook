@@ -63,6 +63,15 @@ action :deploy do
         end
     end
 
+    logrotate_app name do
+      cookbook "logrotate"
+      path File.join(log_dir, '*.log')
+      options ["missingok", "compress", "delaycompress", "notifempty", "copytruncate"]
+      frequency "daily"
+      rotate 7
+      create "644 #{name} #{name}"
+    end
+
     if node['gearbox']['local_path']
         local_path = ::File.join(node['gearbox']['local_path'], key)
         execute "cp #{local_path} #{tar_file}"

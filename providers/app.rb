@@ -50,7 +50,7 @@ action :deploy do
     tar_dir = ::File::join(artifact_dir, 'tars')
     tar_file = ::File::join(tar_dir, "#{version}.tar.gz")
     var_dir = ::File::join(artifact_dir, 'var')
-    log_dir = ::File::join(var_dir, 'log')
+    log_dir = ::File::join(node['gearbox']['logpath'], name)
     data_dir = ::File::join(var_dir, 'data')
     run_dir = ::File::join(var_dir, 'run')
     spool_dir = ::File::join(var_dir, 'spool')

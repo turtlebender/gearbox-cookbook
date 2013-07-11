@@ -65,7 +65,7 @@ action :deploy do
 
     logrotate_app name do
       cookbook "logrotate"
-      path File.join(log_dir, '*.log')
+      path ::File.join(log_dir, '*.log')
       options ["missingok", "compress", "delaycompress", "notifempty", "copytruncate"]
       frequency "daily"
       rotate 7

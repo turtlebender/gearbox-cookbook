@@ -59,6 +59,7 @@ action :deploy do
         directory dir do
             owner name
             group name
+            recursive true
             mode '0775'
         end
     end

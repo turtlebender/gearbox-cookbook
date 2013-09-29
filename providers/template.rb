@@ -4,9 +4,7 @@ require 'chef/file_access_control'
 require 'pathname'
 require 'tempfile'
 require 'chef/provider/file'
-require 'chef/checksum_cache'
 
-include Chef::Mixin::Checksum
 include ChefMustache::MustacheTemplate
 
 def load_current_resource
@@ -44,6 +42,6 @@ action :create do
 
         if ( @new_resource.path =~ %r{.*/nginx/(.*)} )
             nginx_site_template rendered_template, $1
-       end
+        end
     end
 end

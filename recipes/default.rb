@@ -16,6 +16,10 @@
 # limitations under the License.
 #
 
+%w{uwsgi::default uwsgi::emperor nginx::default runit::default}.each do |recipe|
+  include_recipe recipe
+end
+
 user "gearbox" do
   system true
 end

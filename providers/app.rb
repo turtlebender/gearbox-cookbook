@@ -140,32 +140,34 @@ action :deploy do
 
     # Run and store the search data in the context
 
-    (gearbox_data_bag['searches'] || []).each do |search|
-        query = "roles:#{search['role']}"
-        if !search.include?("multi_environment") || !search["multi_environment"]
-            query = "{0} AND chef_environment:#{node.chef_environment}"
-            matching_nodes = search(:node, query)
-            results = matching_nodes.map do |result|
-                { search['attribute'] => result[search['attribute']] }
-            end
-        end
-        if search.include?("multiple") || search['multiple']
-            context[name][search['name']] = results
-        else
-            context[name][search['name']] = results.first
-        end
-    end
+    unless Chef::Config[:solo]
+      (gearbox_data_bag['searches'] || []).each do |search|
+          query = "roles:#{search['role']}"
+          if !search.include?("multi_environment") || !search["multi_environment"]
+              query = "{0} AND chef_environment:#{node.chef_environment}"
+              matching_nodes = search(:node, query)
+              results = matching_nodes.map do |result|
+                  { search['attribute'] => result[search['attribute']] }
+              end
+          end
+          if search.include?("multiple") || search['multiple']
+              context[name][search['name']] = results
+          else
+              context[name][search['name']] = results.first
+          end
+      end
 
-    lb_list = Array.new
+      lb_list = Array.new
 
-    if gearbox_data_bag.include?("load_balance")
-        lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]} AND chef_environment:#{node.chef_environment}")
-        if lbs.empty?
-            lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]}")
-        end
-        lb_list = lbs.map do |lb|
-            { "socket" => "#{lb.ipaddress}#{lb['uwsgi']['fast_router']['subscription_socket']}"}
-        end
+      if gearbox_data_bag.include?("load_balance")
+          lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]} AND chef_environment:#{node.chef_environment}")
+          if lbs.empty?
+              lbs = search(:node, "lb_scope:#{gearbox_data_bag["load_balance"]}")
+          end
+          lb_list = lbs.map do |lb|
+              { "socket" => "#{lb.ipaddress}#{lb['uwsgi']['fast_router']['subscription_socket']}"}
+          end
+      end
     end
 
 

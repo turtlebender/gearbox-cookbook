@@ -24,13 +24,18 @@ user "gearbox" do
   system true
 end
 
-aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
+begin
+  aws_creds = Chef::EncryptedDataBagItem.load("aws_credentials", node["gearbox"]["aws_user"])
 
-aws_sdk_connection 'base' do
-  action [:install, :configure]
-  access_key_id aws_creds["aws_access_key_id"]
-  secret_access_key aws_creds["aws_secret_access_key"]
+  aws_sdk_connection 'base' do
+    action [:install, :configure]
+    access_key_id aws_creds["aws_access_key_id"]
+    secret_access_key aws_creds["aws_secret_access_key"]
+  end
+rescue
+  puts "Can't load credentials from encrypted data bag"
 end
+
 
 chef_gem "mustache" do
   action :install

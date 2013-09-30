@@ -41,6 +41,10 @@ chef_gem "mustache" do
   action :install
 end
 
+chef_gem "awsk-sdk" do
+  action :install
+end
+
 require "mustache"
 
 config = { :region => 'us-east-1' }

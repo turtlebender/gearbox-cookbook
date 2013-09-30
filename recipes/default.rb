@@ -41,7 +41,7 @@ chef_gem "mustache" do
   action :install
 end
 
-chef_gem "awsk-sdk" do
+chef_gem "aws-sdk" do
   action :install
 end
 

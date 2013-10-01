@@ -84,14 +84,17 @@ action :deploy do
         else
             unless new_resource.bucket.nil? || node['gearbox']['bucket']
               require 'aws-sdk'
-              s3 = AWS::S3.new()
+              ruby_block 'get tarfile' do
+                block do
+                  s3 = AWS::S3.new()
 
-              document = s3.buckets[new_resource.bucket].objects[key]
+                  document = s3.buckets[new_resource.bucket].objects[key]
 
-              ::File.open(tar_file, "w") do |f|
-                f.write(document.read)
+                  ::File.open(tar_file, "w") do |f|
+                    f.write(document.read)
+                  end
+                end
               end
-
             else
                 Chef::Log.warn('I do not know how to get your artifact.')
             end

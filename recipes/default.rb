@@ -41,9 +41,14 @@ chef_gem "mustache" do
   action :install
 end
 
+chef_gem "uuidtools" do
+  action :install
+end
+
 chef_gem "aws-sdk" do
   action :install
 end
+
 
 require "mustache"
 
